@@ -2,7 +2,8 @@ function Invoke-PowerShellTcp
 { 
 <#
 .SYNOPSIS
-Nishang script which can be used for Reverse or Bind interactive PowerShell from a target. 
+
+THis is a Nishang script which can be used for Reverse or Bind interactive PowerShell from a target. 
 
 .DESCRIPTION
 This script is able to connect to a standard netcat listening on a port when using the -Reverse switch. 
